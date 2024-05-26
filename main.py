@@ -96,8 +96,10 @@ async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     response = "Анкети користувачів:\n\n"
-    for profile in user_profiles.values():
-        response += f"Ім'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\n\n"
+    user_id = update.message.from_user.id
+    for uid, profile in user_profiles.items():
+        if uid != user_id:
+            response += f"Ім'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\n\n"
     
     if response == "Анкети користувачів:\n\n":
         response = "Немає анкет для перегляду."
@@ -111,6 +113,7 @@ async def search_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def process_search_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     city = update.message.text
+    user_id = update.message.from_user.id
     user_age = context.user_data.get('age')
     if not user_age:
         await update.message.reply_text("Спочатку створіть акаунт.")
@@ -119,8 +122,8 @@ async def process_search_profiles(update: Update, context: ContextTypes.DEFAULT_
     max_age = user_age + 3
 
     matching_profiles = [
-        profile for profile in user_profiles.values()
-        if profile['city'] == city and min_age <= profile['age'] <= max_age
+        profile for uid, profile in user_profiles.items()
+        if uid != user_id and profile['city'] == city and min_age <= profile['age'] <= max_age
     ]
 
     if matching_profiles:
