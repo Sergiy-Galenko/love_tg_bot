@@ -1,12 +1,10 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 import random
+from src.utils import save_user_to_memory, get_telegram_username, get_profiles_by_city_and_age
 
 # Становища для розмови
 NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES = range(7)
-
-# Зберігання профілів користувачів
-user_profiles = {}
 
 # Зберігання поточних переглядів профілів
 current_profile_index = {}
@@ -24,7 +22,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             resize_keyboard=True
         )
     )
-
 
 async def create_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
@@ -71,7 +68,9 @@ async def set_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def confirm_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text == "Так":
         user_id = update.message.from_user.id
-        user_profiles[user_id] = context.user_data
+        context.user_data['username'] = get_telegram_username(update)
+        save_user_to_memory(user_id, context.user_data)
+
         await update.message.reply_text(
             "Ваш акаунт створено! Хочете переглянути анкети інших людей?",
             reply_markup=ReplyKeyboardMarkup(
@@ -110,9 +109,15 @@ async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
-    profiles = list(user_profiles.keys())
-    if user_id in profiles:
-        profiles.remove(user_id)
+    user_data = context.user_data
+    city = user_data.get('city')
+    age = user_data.get('age')
+
+    if not city or not age:
+        await update.message.reply_text("Спочатку створіть акаунт.")
+        return ConversationHandler.END
+
+    profiles = get_profiles_by_city_and_age(city, age-3, age+3, user_id)
 
     if profiles:
         random.shuffle(profiles)
@@ -131,10 +136,9 @@ async def show_next_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return ConversationHandler.END
 
     profiles = current_profile_index[user_id]
-    next_profile_id = profiles.pop()
-    profile = user_profiles[next_profile_id]
+    next_profile = profiles.pop()
     await update.message.reply_text(
-        f"Ім'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\n",
+        f"Ім'я: {next_profile['name']}\nВік: {next_profile['age']}\nМісто: {next_profile['city']}\n",
         reply_markup=ReplyKeyboardMarkup(
             [
                 [KeyboardButton("Наступний")]
@@ -158,10 +162,7 @@ async def process_search_profiles(update: Update, context: ContextTypes.DEFAULT_
     min_age = user_age - 3
     max_age = user_age + 3
 
-    matching_profiles = [
-        profile for uid, profile in user_profiles.items()
-        if uid != user_id and profile['city'] == city and min_age <= profile['age'] <= max_age
-    ]
+    matching_profiles = get_profiles_by_city_and_age(city, min_age, max_age, user_id)
 
     if matching_profiles:
         response = "Знайдені анкети:\n\n"
