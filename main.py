@@ -6,7 +6,7 @@ from src.handlers import (
 )
 
 def main() -> None:
-    application = Application.builder().token("").build()
+    application = Application.builder().token("#").build()
     
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(filters.Regex('^Створити акаунт$'), create_account)],
