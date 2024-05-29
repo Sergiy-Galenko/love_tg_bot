@@ -1,12 +1,12 @@
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
 from src.handlers import (
     start, create_account, set_name, set_age, set_city,
-    confirm_data, edit_profile, view_profiles, search_profiles, process_search_profiles,
-    NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE
+    confirm_data, edit_profile, view_profiles, search_profiles, process_search_profiles, show_next_profile,
+    NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES
 )
 
 def main() -> None:
-    application = Application.builder().token("#").build()
+    application = Application.builder().token("7105850725:AAFItkfDHDVM4RNPEd0Hcgsts_3dMRiaJKo").build()
     
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(filters.Regex('^Створити акаунт$'), create_account)],
@@ -16,6 +16,7 @@ def main() -> None:
             CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_city)],
             CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_data)],
             EDIT_PROFILE: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_profile)],
+            VIEW_PROFILES: [MessageHandler(filters.Regex('^Наступний$'), show_next_profile)],
             SEARCH_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_profiles)],
         },
         fallbacks=[CommandHandler('start', start)]

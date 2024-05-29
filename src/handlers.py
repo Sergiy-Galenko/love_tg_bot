@@ -1,11 +1,15 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
+import random
 
 # Становища для розмови
-NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE = range(6)
+NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES = range(7)
 
 # Зберігання профілів користувачів
 user_profiles = {}
+
+# Зберігання поточних переглядів профілів
+current_profile_index = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.message.from_user
@@ -77,7 +81,7 @@ async def confirm_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                 resize_keyboard=True
             )
         )
-        return SEARCH_PROFILES
+        return VIEW_PROFILES
     else:
         await update.message.reply_text(
             "Що ви хочете відредагувати?",
@@ -103,18 +107,41 @@ async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         await update.message.reply_text("Введіть своє нове місто:")
         return CITY
 
-async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    response = "Анкети користувачів:\n\n"
+async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
-    for uid, profile in user_profiles.items():
-        if uid != user_id:
-            response += f"Ім'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\n\n"
-    
-    if response == "Анкети користувачів:\n\n":
-        response = "Немає анкет для перегляду."
+    profiles = list(user_profiles.keys())
+    if user_id in profiles:
+        profiles.remove(user_id)
 
-    await update.message.reply_text(response)
-    return ConversationHandler.END
+    if profiles:
+        random.shuffle(profiles)
+        current_profile_index[user_id] = profiles
+        await show_next_profile(update, context)
+    else:
+        await update.message.reply_text("Немає анкет для перегляду.")
+        return ConversationHandler.END
+    return VIEW_PROFILES
+
+async def show_next_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.message.from_user.id
+
+    if user_id not in current_profile_index or not current_profile_index[user_id]:
+        await update.message.reply_text("Більше немає анкет для перегляду.")
+        return ConversationHandler.END
+
+    profiles = current_profile_index[user_id]
+    next_profile_id = profiles.pop()
+    profile = user_profiles[next_profile_id]
+    await update.message.reply_text(
+        f"Ім'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\n",
+        reply_markup=ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Наступний")]
+            ], 
+            resize_keyboard=True
+        )
+    )
+    return VIEW_PROFILES
 
 async def search_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Введіть місто для пошуку:")
