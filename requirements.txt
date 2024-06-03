@@ -1,0 +1,2 @@
+python-telegram-bot==20.0
+pymongo==4.3.3

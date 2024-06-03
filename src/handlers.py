@@ -1,7 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 import random
-from src.utils import save_user_to_memory, get_telegram_username, get_profiles_by_city_and_age
+from src.database import save_user, get_users_by_city_and_age
 
 # Становища для розмови
 NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES = range(7)
@@ -68,8 +68,9 @@ async def set_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def confirm_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text == "Так":
         user_id = update.message.from_user.id
-        context.user_data['username'] = get_telegram_username(update)
-        save_user_to_memory(user_id, context.user_data)
+        context.user_data['username'] = update.message.from_user.username
+        profile = context.user_data
+        save_user(user_id, profile['name'], profile['age'], profile['city'], profile['username'])
 
         await update.message.reply_text(
             "Ваш акаунт створено! Хочете переглянути анкети інших людей?",
@@ -117,7 +118,7 @@ async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text("Спочатку створіть акаунт.")
         return ConversationHandler.END
 
-    profiles = get_profiles_by_city_and_age(city, age-3, age+3, user_id)
+    profiles = get_users_by_city_and_age(city, age-3, age+3, user_id)
 
     if profiles:
         random.shuffle(profiles)
@@ -162,7 +163,7 @@ async def process_search_profiles(update: Update, context: ContextTypes.DEFAULT_
     min_age = user_age - 3
     max_age = user_age + 3
 
-    matching_profiles = get_profiles_by_city_and_age(city, min_age, max_age, user_id)
+    matching_profiles = get_users_by_city_and_age(city, min_age, max_age, user_id)
 
     if matching_profiles:
         response = "Знайдені анкети:\n\n"
