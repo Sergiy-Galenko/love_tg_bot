@@ -1,45 +1,73 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 import random
-from src.database import save_user, get_users_by_city_and_age
 
 # Становища для розмови
-NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES = range(7)
+START, NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES, PREMIUM = range(9)
 
-# Зберігання поточних переглядів профілів
+# Зберігання даних користувачів у пам'яті
+user_profiles = {}
 current_profile_index = {}
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     await update.message.reply_text(
         f"Вітаю, {user.first_name}! Виберіть опцію:",
         reply_markup=ReplyKeyboardMarkup(
             [
-                [KeyboardButton("Створити акаунт")],
-                [KeyboardButton("Переглянути анкети")],
-                [KeyboardButton("Пошук")]
+                [KeyboardButton("Знайомства")],
+                [KeyboardButton("18+")]
             ], 
             resize_keyboard=True
         )
     )
+    return START
 
-async def create_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user = update.message.from_user
-    await update.message.reply_text(
-        "Введіть своє ім'я:",
-        reply_markup=ReplyKeyboardMarkup(
-            [
-                [KeyboardButton(user.first_name)]
-            ], 
-            resize_keyboard=True, one_time_keyboard=True
+async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    choice = update.message.text
+    if choice == "18+":
+        await update.message.reply_text(
+            "Щоб отримати доступ до цього розділу, вам потрібно оформити преміум-акаунт.",
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    [KeyboardButton("🔴 Купити преміум")],
+                    [KeyboardButton("Назад")]
+                ], 
+                resize_keyboard=True
+            )
         )
-    )
-    return NAME
+        return PREMIUM
+    elif choice == "Знайомства":
+        user = update.message.from_user
+        await update.message.reply_text(
+            "Введіть своє ім'я або оберіть запропоноване:",
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    [KeyboardButton(user.first_name)],
+                    [KeyboardButton("Ввести інше ім'я")]
+                ], 
+                resize_keyboard=True, one_time_keyboard=True
+            )
+        )
+        return NAME
+
+async def premium_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    choice = update.message.text
+    if choice == "Назад":
+        await start(update, context)
+        return START
+    elif choice == "🔴 Купити преміум":
+        await update.message.reply_text("Функція оформлення преміум-акаунту ще не реалізована.")
+        return PREMIUM
 
 async def set_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['name'] = update.message.text
-    await update.message.reply_text("Введіть свій вік:")
-    return AGE
+    if update.message.text == "Ввести інше ім'я":
+        await update.message.reply_text("Введіть своє ім'я:")
+        return NAME
+    else:
+        context.user_data['name'] = update.message.text
+        await update.message.reply_text("Введіть свій вік:")
+        return AGE
 
 async def set_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
@@ -69,8 +97,7 @@ async def confirm_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     if update.message.text == "Так":
         user_id = update.message.from_user.id
         context.user_data['username'] = update.message.from_user.username
-        profile = context.user_data
-        save_user(user_id, profile['name'], profile['age'], profile['city'], profile['username'])
+        user_profiles[user_id] = context.user_data
 
         await update.message.reply_text(
             "Ваш акаунт створено! Хочете переглянути анкети інших людей?",
@@ -99,7 +126,17 @@ async def confirm_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text == "Ім'я":
-        await update.message.reply_text("Введіть своє нове ім'я:")
+        user = update.message.from_user
+        await update.message.reply_text(
+            "Введіть своє нове ім'я або оберіть запропоноване:",
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    [KeyboardButton(user.first_name)],
+                    [KeyboardButton("Ввести інше ім'я")]
+                ], 
+                resize_keyboard=True, one_time_keyboard=True
+            )
+        )
         return NAME
     elif update.message.text == "Вік":
         await update.message.reply_text("Введіть свій новий вік:")
@@ -110,15 +147,16 @@ async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
-    user_data = context.user_data
-    city = user_data.get('city')
-    age = user_data.get('age')
-
-    if not city or not age:
+    user_data = user_profiles.get(user_id)
+    
+    if not user_data:
         await update.message.reply_text("Спочатку створіть акаунт.")
         return ConversationHandler.END
 
-    profiles = get_users_by_city_and_age(city, age-3, age+3, user_id)
+    city = user_data.get('city')
+    age = user_data.get('age')
+
+    profiles = [profile for uid, profile in user_profiles.items() if uid != user_id and profile['city'] == city and age - 3 <= profile['age'] <= age + 3]
 
     if profiles:
         random.shuffle(profiles)
@@ -156,14 +194,17 @@ async def search_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def process_search_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     city = update.message.text
     user_id = update.message.from_user.id
-    user_age = context.user_data.get('age')
-    if not user_age:
+    user_data = user_profiles.get(user_id)
+
+    if not user_data:
         await update.message.reply_text("Спочатку створіть акаунт.")
         return ConversationHandler.END
+
+    user_age = user_data.get('age')
     min_age = user_age - 3
     max_age = user_age + 3
 
-    matching_profiles = get_users_by_city_and_age(city, min_age, max_age, user_id)
+    matching_profiles = [profile for uid, profile in user_profiles.items() if uid != user_id and profile['city'] == city and min_age <= profile['age'] <= max_age]
 
     if matching_profiles:
         response = "Знайдені анкети:\n\n"
