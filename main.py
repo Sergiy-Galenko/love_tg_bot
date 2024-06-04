@@ -6,7 +6,7 @@ from src.handlers import (
 )
 
 def main() -> None:
-    application = Application.builder().token("7105850725:AAFItkfDHDVM4RNPEd0Hcgsts_3dMRiaJKo").build()  # Замініть на ваш правильний токен
+    application = Application.builder().token("").build()  # Замініть на ваш правильний токен
     
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(filters.Regex('^Створити акаунт$'), create_account)],
@@ -28,6 +28,6 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.Regex('^Пошук$'), search_profiles))
 
     application.run_polling()
-
+#test commit
 if __name__ == '__main__':
     main()
