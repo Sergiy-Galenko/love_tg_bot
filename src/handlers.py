@@ -1,13 +1,41 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 import random
+import string
 
 # Становища для розмови
-START, NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES, PREMIUM = range(9)
+START, NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY = range(12)
 
 # Зберігання даних користувачів у пам'яті
 user_profiles = {}
 current_profile_index = {}
+premium_keys = {}
+
+def generate_unique_key(length=12):
+    """Generate a unique key for gifting premium subscription."""
+    characters = string.ascii_letters + string.digits
+    key = ''.join(random.choice(characters) for i in range(length))
+    return key
+
+def get_currency(country_code):
+    """Return the currency based on the country code."""
+    currency_dict = {
+        "US": "USD",
+        "UA": "UAH",
+        "EU": "EUR",
+        "GB": "GBP",
+        # Додайте інші країни за потреби
+    }
+    return currency_dict.get(country_code, "USD")
+
+def get_subscription_benefits(subscription_type, currency):
+    benefits = {
+        "На тиждень": f"Переваги підписки на тиждень:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n\nЦіна: 10 {currency}",
+        "На місяць": f"Переваги підписки на місяць:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n\nЦіна: 30 {currency}",
+        "На рік": f"Переваги підписки на рік:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n- Спеціальні пропозиції\n\nЦіна: 300 {currency}",
+        "Назавжди": f"Переваги підписки назавжди:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n- Спеціальні пропозиції\n- Пожиттєвий доступ\n\nЦіна: 1000 {currency}"
+    }
+    return benefits.get(subscription_type, "Невідомий тип підписки")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
@@ -16,7 +44,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         reply_markup=ReplyKeyboardMarkup(
             [
                 [KeyboardButton("Знайомства")],
-                [KeyboardButton("18+")]
+                [KeyboardButton("18+")],
+                [KeyboardButton("Ввести унікальний ключ")]
             ], 
             resize_keyboard=True
         )
@@ -50,6 +79,34 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             )
         )
         return NAME
+    elif choice == "Ввести унікальний ключ":
+        await update.message.reply_text("Введіть унікальний ключ:")
+        return ENTER_KEY
+
+async def enter_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    key = update.message.text
+    user_id = update.message.from_user.id
+
+    if key in premium_keys:
+        duration = premium_keys[key]['duration']
+        if user_id not in user_profiles:
+            user_profiles[user_id] = {'premium': {}}
+        user_profiles[user_id]['premium'] = {
+            'status': True,
+            'duration': duration
+        }
+        del premium_keys[key]
+        await update.message.reply_text(f"Ваш преміум-акаунт активовано на {duration}!", reply_markup=ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Знайомства")],
+                [KeyboardButton("18+")],
+                [KeyboardButton("Ввести унікальний ключ")]
+            ], 
+            resize_keyboard=True
+        ))
+    else:
+        await update.message.reply_text("Унікальний ключ невірний. Спробуйте ще раз.")
+    return START
 
 async def premium_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     choice = update.message.text
@@ -57,8 +114,94 @@ async def premium_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await start(update, context)
         return START
     elif choice == "🔴 Купити преміум":
-        await update.message.reply_text("Функція оформлення преміум-акаунту ще не реалізована.")
+        await update.message.reply_text(
+            "Виберіть тривалість підписки:",
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    [KeyboardButton("На тиждень")],
+                    [KeyboardButton("На місяць")],
+                    [KeyboardButton("На рік")],
+                    [KeyboardButton("Назавжди")],
+                    [KeyboardButton("Назад")]
+                ], 
+                resize_keyboard=True
+            )
+        )
+        return SUBSCRIPTION
+
+async def subscription_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    choice = update.message.text
+    if choice == "Назад":
+        await premium_choice(update, context)
         return PREMIUM
+    else:
+        context.user_data['subscription'] = choice
+        user_country = update.message.from_user.language_code  # Приклад отримання коду країни
+        currency = get_currency(user_country)
+        await update.message.reply_text(
+            get_subscription_benefits(choice, currency),
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    [KeyboardButton("Купити для себе")],
+                    [KeyboardButton("Купити в подарунок")],
+                    [KeyboardButton("Назад")]
+                ], 
+                resize_keyboard=True
+            )
+        )
+        return GIFT
+
+async def gift_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    choice = update.message.text
+    if choice == "Назад":
+        user_country = update.message.from_user.language_code
+        currency = get_currency(user_country)
+        await update.message.reply_text(
+            "Виберіть тривалість підписки:",
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    [KeyboardButton("На тиждень")],
+                    [KeyboardButton("На місяць")],
+                    [KeyboardButton("На рік")],
+                    [KeyboardButton("Назавжди")],
+                    [KeyboardButton("Назад")]
+                ], 
+                resize_keyboard=True
+            )
+        )
+        return SUBSCRIPTION
+    elif choice == "Купити для себе":
+        user_id = update.message.from_user.id
+        duration = context.user_data['subscription']
+        if user_id not in user_profiles:
+            user_profiles[user_id] = {}
+        user_profiles[user_id]['premium'] = {
+            'status': True,
+            'duration': duration
+        }
+        await update.message.reply_text(f"Ваш преміум-акаунт активовано на {duration}!", reply_markup=ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Знайомства")],
+                [KeyboardButton("18+")],
+                [KeyboardButton("Ввести унікальний ключ")]
+            ], 
+            resize_keyboard=True
+        ))
+        return START
+    elif choice == "Купити в подарунок":
+        key = generate_unique_key()
+        premium_keys[key] = {
+            'duration': context.user_data['subscription']
+        }
+        await update.message.reply_text(f"Ваш унікальний ключ для подарунку: {key}", reply_markup=ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Знайомства")],
+                [KeyboardButton("18+")],
+                [KeyboardButton("Ввести унікальний ключ")]
+            ], 
+            resize_keyboard=True
+        ))
+        return START
 
 async def set_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text == "Ввести інше ім'я":
@@ -112,17 +255,17 @@ async def confirm_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         return VIEW_PROFILES
     else:
         await update.message.reply_text(
-            "Що ви хочете відредагувати?",
+            "Ви повернулись до головного меню. Ваші дані збережені.",
             reply_markup=ReplyKeyboardMarkup(
                 [
-                    [KeyboardButton("Ім'я")],
-                    [KeyboardButton("Вік")],
-                    [KeyboardButton("Місто")]
+                    [KeyboardButton("Знайомства")],
+                    [KeyboardButton("18+")],
+                    [KeyboardButton("Ввести унікальний ключ")]
                 ], 
                 resize_keyboard=True
             )
         )
-        return EDIT_PROFILE
+        return START
 
 async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text == "Ім'я":
