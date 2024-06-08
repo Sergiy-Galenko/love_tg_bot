@@ -6,7 +6,7 @@ from src.handlers import (
 )
 
 def main() -> None:
-    application = Application.builder().token("#").build()  # Замініть на ваш правильний токен
+    application = Application.builder().token("").build()  # Замініть на ваш правильний токен
     
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],

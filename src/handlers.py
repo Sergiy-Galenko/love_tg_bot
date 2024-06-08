@@ -37,6 +37,23 @@ def get_subscription_benefits(subscription_type, currency):
     }
     return benefits.get(subscription_type, "Невідомий тип підписки")
 
+async def send_welcome_premium_message(update: Update, duration: str) -> None:
+    await update.message.reply_text(
+        f"Вітаємо з оформленням преміум підписки на {duration}!",
+        reply_markup=ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Знайомства")],
+                [KeyboardButton("18+")],
+                [KeyboardButton("Ввести унікальний ключ")]
+            ], 
+            resize_keyboard=True
+        )
+    )
+    try:
+        await update.message.reply_sticker("CAACAgUAAxkBAAIHTmZklk01k3PYbfYjDZGNV6O-NeqqAAJvAwAC6QrIA6_OvtkCul10NQQ")
+    except Exception as e:
+        print(f"Failed to send sticker: {e}")
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     await update.message.reply_text(
@@ -96,14 +113,7 @@ async def enter_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             'duration': duration
         }
         del premium_keys[key]
-        await update.message.reply_text(f"Ваш преміум-акаунт активовано на {duration}!", reply_markup=ReplyKeyboardMarkup(
-            [
-                [KeyboardButton("Знайомства")],
-                [KeyboardButton("18+")],
-                [KeyboardButton("Ввести унікальний ключ")]
-            ], 
-            resize_keyboard=True
-        ))
+        await send_welcome_premium_message(update, duration)
     else:
         await update.message.reply_text("Унікальний ключ невірний. Спробуйте ще раз.")
     return START
@@ -179,14 +189,7 @@ async def gift_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             'status': True,
             'duration': duration
         }
-        await update.message.reply_text(f"Ваш преміум-акаунт активовано на {duration}!", reply_markup=ReplyKeyboardMarkup(
-            [
-                [KeyboardButton("Знайомства")],
-                [KeyboardButton("18+")],
-                [KeyboardButton("Ввести унікальний ключ")]
-            ], 
-            resize_keyboard=True
-        ))
+        await send_welcome_premium_message(update, duration)
         return START
     elif choice == "Купити в подарунок":
         key = generate_unique_key()
