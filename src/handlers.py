@@ -2,14 +2,26 @@ from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 import random
 import string
+from geopy.geocoders import Nominatim
+from geopy.adapters import RequestsAdapter
+import requests
+
+# Вимкнення перевірки SSL-сертифікатів
+class MyRequestsAdapter(RequestsAdapter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.session.verify = False
+        self.session.mount('https://', requests.adapters.HTTPAdapter())
 
 # Становища для розмови
-START, NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY = range(12)
+START, NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, LOCATION = range(13)
 
 # Зберігання даних користувачів у пам'яті
 user_profiles = {}
 current_profile_index = {}
 premium_keys = {}
+
+geolocator = Nominatim(user_agent="telegram_bot", adapter_factory=MyRequestsAdapter)
 
 def generate_unique_key(length=12):
     """Generate a unique key for gifting premium subscription."""
@@ -50,7 +62,7 @@ async def send_welcome_premium_message(update: Update, duration: str) -> None:
         )
     )
     try:
-        await update.message.reply_sticker("CAACAgUAAxkBAAIHTmZklk01k3PYbfYjDZGNV6O-NeqqAAJvAwAC6QrIA6_OvtkCul10NQQ")
+        await update.message.reply_sticker("CAACAgIAAxkBAAECu6JhFdXqlWXH35nWcF5J6J_fDk8k5gACbQEAAhZCawpA5Ghl9NDCry4E")
     except Exception as e:
         print(f"Failed to send sticker: {e}")
 
@@ -212,7 +224,9 @@ async def set_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return NAME
     else:
         context.user_data['name'] = update.message.text
-        await update.message.reply_text("Введіть свій вік:")
+        await update.message.reply_text(
+            "Введіть свій вік:"
+        )
         return AGE
 
 async def set_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -221,23 +235,57 @@ async def set_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     except ValueError:
         await update.message.reply_text("Будь ласка, введіть вік цифрами:")
         return AGE
-    await update.message.reply_text("Введіть своє місто:")
+    await update.message.reply_text(
+        "Будь ласка, поділіться вашим місцезнаходженням або введіть місто вручну.",
+        reply_markup=ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Поділитися місцезнаходженням", request_location=True)],
+                [KeyboardButton("Ввести місто вручну")]
+            ], 
+            resize_keyboard=True, one_time_keyboard=True
+        )
+    )
+    return LOCATION
+
+async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.location:
+        location = update.message.location
+        user_location = geolocator.reverse(f"{location.latitude}, {location.longitude}")
+        city = user_location.raw['address'].get('city', user_location.raw['address'].get('town', ''))
+        context.user_data['city'] = city
+        await update.message.reply_text(
+            f"Ваше місто: {city}. Хочете залишити це місто або ввести інше?",
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    [KeyboardButton(city)],
+                    [KeyboardButton("Ввести інше місто")]
+                ], 
+                resize_keyboard=True, one_time_keyboard=True
+            )
+        )
+    else:
+        await update.message.reply_text("Введіть своє місто:")
+        return CITY
     return CITY
 
 async def set_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['city'] = update.message.text
-    profile = context.user_data
-    await update.message.reply_text(
-        f"Ваші дані:\nІм'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\n\nВсе вірно?",
-        reply_markup=ReplyKeyboardMarkup(
-            [
-                [KeyboardButton("Так")],
-                [KeyboardButton("Ні")]
-            ], 
-            resize_keyboard=True
+    if update.message.text == "Ввести інше місто":
+        await update.message.reply_text("Введіть своє місто:")
+        return CITY
+    else:
+        context.user_data['city'] = update.message.text
+        profile = context.user_data
+        await update.message.reply_text(
+            f"Ваші дані:\nІм'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\n\nВсе вірно?",
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    [KeyboardButton("Так")],
+                    [KeyboardButton("Ні")]
+                ], 
+                resize_keyboard=True
+            )
         )
-    )
-    return CONFIRMATION
+        return CONFIRMATION
 
 async def confirm_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text == "Так":
