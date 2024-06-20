@@ -1,2 +1,4 @@
 python-telegram-bot==20.0
 pymongo==4.3.3
+requests==2.27.1
+geopy==2.2.0
