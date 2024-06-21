@@ -12,7 +12,7 @@ async def sticker_handler(update: Update, context: CallbackContext) -> None:
 
 def main() -> None:
     # Введіть свій токен бота тут
-    token = ''
+    token = '7105850725:AAFItkfDHDVM4RNPEd0Hcgsts_3dMRiaJKo'
 
     # Створення аплікації
     application = Application.builder().token(token).build()

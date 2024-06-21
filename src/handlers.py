@@ -25,9 +25,15 @@ async def send_welcome_premium_message(update: Update, duration: str) -> None:
         )
     )
     try:
-        await update.message.reply_sticker("CAACAgIAAxkBAAIJb2Z0rFj02Qb_D0OD1PShvcAX-MgFAAKjAQACEBptIkfOxfML2NdjNQQ")
+        await update.message.reply_sticker("CAACAgUAAxkBAAIKkWZ13fvfJF-qwg3ix6yvNxd7WERpAAKmAwAC6QrIA3mzkAhrhbH0NQQ")
     except Exception as e:
         print(f"Failed to send sticker: {e}")
+
+async def send_gender_match_sticker(update: Update) -> None:
+    try:
+        await update.message.reply_sticker("CAACAgIAAxkBAAIKk2Z13glz9gcAATCnSDS6Jpq-lM0BhAACiQIAAladvQqhVs0CITIOPTUE")  # Замініть на правильний стікер
+    except Exception as e:
+        print(f"Failed to send gender match sticker: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
@@ -333,6 +339,10 @@ async def show_next_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     profiles = current_profile_index[user_id]
     next_profile = profiles.pop()
+
+    if user_profiles[user_id].get('premium', {}).get('status', False) and user_profiles[user_id]['gender'] == next_profile['gender']:
+        await send_gender_match_sticker(update)
+
     await update.message.reply_text(
         f"Ім'я: {next_profile['name']}\nВік: {next_profile['age']}\nМісто: {next_profile['city']}\n",
         reply_markup=ReplyKeyboardMarkup(
