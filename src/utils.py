@@ -1,16 +1,28 @@
-# Утиліти для роботи з даними користувачів
+import random
+import string
 
-user_profiles = {}
+def generate_unique_key(length=12):
+    characters = string.ascii_letters + string.digits
+    key = ''.join(random.choice(characters) for i in range(length))
+    return key
 
-def save_user_to_memory(user_id, user_data):
-    user_profiles[user_id] = user_data
+def get_currency(country_code):
+    currency_dict = {
+        "US": "USD",
+        "UA": "UAH",
+        "EU": "EUR",
+        "GB": "GBP",
+    }
+    return currency_dict.get(country_code, "USD")
 
-def get_telegram_username(update):
-    user = update.message.from_user
-    return user.username if user.username else 'N/A'
+def get_subscription_benefits(subscription_type, currency):
+    benefits = {
+        "На тиждень": f"Переваги підписки на тиждень:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n\nЦіна: 10 {currency}",
+        "На місяць": f"Переваги підписки на місяць:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n\nЦіна: 30 {currency}",
+        "На рік": f"Переваги підписки на рік:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n- Спеціальні пропозиції\n\nЦіна: 300 {currency}",
+        "Назавжди": f"Переваги підписки назавжди:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n- Спеціальні пропозиції\n- Пожиттєвий доступ\n\nЦіна: 1000 {currency}"
+    }
+    return benefits.get(subscription_type, "Невідомий тип підписки")
 
-def get_profiles_by_city_and_age(city, min_age, max_age, exclude_user_id):
-    return [
-        profile for uid, profile in user_profiles.items()
-        if uid != exclude_user_id and profile['city'].lower() == city.lower() and min_age <= int(profile['age']) <= max_age
-    ]
+def search_profiles_by_criteria(user_profiles, city, min_age, max_age, search_preference):
+    return [profile for uid, profile in user_profiles.items() if profile['city'] == city and min_age <= profile['age'] <= max_age and (search_preference == "Шукати всіх" or profile['gender'] == search_preference)]

@@ -1,53 +1,16 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
+from src.utils import (
+    generate_unique_key, get_currency, get_subscription_benefits, 
+    search_profiles_by_criteria
+)
 import random
-import string
-from geopy.geocoders import Nominatim
-from geopy.adapters import RequestsAdapter
-import requests
 
-# Вимкнення перевірки SSL-сертифікатів
-class MyRequestsAdapter(RequestsAdapter):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.session.verify = False
-        self.session.mount('https://', requests.adapters.HTTPAdapter())
+START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY = range(14)
 
-# Становища для розмови
-START, NAME, AGE, CITY, CONFIRMATION, SEARCH_PROFILES, EDIT_PROFILE, VIEW_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, LOCATION = range(13)
-
-# Зберігання даних користувачів у пам'яті
 user_profiles = {}
 current_profile_index = {}
 premium_keys = {}
-
-geolocator = Nominatim(user_agent="telegram_bot", adapter_factory=MyRequestsAdapter)
-
-def generate_unique_key(length=12):
-    """Generate a unique key for gifting premium subscription."""
-    characters = string.ascii_letters + string.digits
-    key = ''.join(random.choice(characters) for i in range(length))
-    return key
-
-def get_currency(country_code):
-    """Return the currency based on the country code."""
-    currency_dict = {
-        "US": "USD",
-        "UA": "UAH",
-        "EU": "EUR",
-        "GB": "GBP",
-        # Додайте інші країни за потреби
-    }
-    return currency_dict.get(country_code, "USD")
-
-def get_subscription_benefits(subscription_type, currency):
-    benefits = {
-        "На тиждень": f"Переваги підписки на тиждень:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n\nЦіна: 10 {currency}",
-        "На місяць": f"Переваги підписки на місяць:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n\nЦіна: 30 {currency}",
-        "На рік": f"Переваги підписки на рік:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n- Спеціальні пропозиції\n\nЦіна: 300 {currency}",
-        "Назавжди": f"Переваги підписки назавжди:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n- Спеціальні пропозиції\n- Пожиттєвий доступ\n\nЦіна: 1000 {currency}"
-    }
-    return benefits.get(subscription_type, "Невідомий тип підписки")
 
 async def send_welcome_premium_message(update: Update, duration: str) -> None:
     await update.message.reply_text(
@@ -62,21 +25,20 @@ async def send_welcome_premium_message(update: Update, duration: str) -> None:
         )
     )
     try:
-        await update.message.reply_sticker("CAACAgIAAxkBAAECu6JhFdXqlWXH35nWcF5J6J_fDk8k5gACbQEAAhZCawpA5Ghl9NDCry4E")
+        await update.message.reply_sticker("CAACAgIAAxkBAAIJb2Z0rFj02Qb_D0OD1PShvcAX-MgFAAKjAQACEBptIkfOxfML2NdjNQQ")
     except Exception as e:
         print(f"Failed to send sticker: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user = update.message.from_user
     await update.message.reply_text(
-        f"Вітаю, {user.first_name}! Виберіть опцію:",
+        "Виберіть опцію:",
         reply_markup=ReplyKeyboardMarkup(
             [
                 [KeyboardButton("Знайомства")],
                 [KeyboardButton("18+")],
                 [KeyboardButton("Ввести унікальний ключ")]
             ], 
-            resize_keyboard=True
+            resize_keyboard=True, one_time_keyboard=True
         )
     )
     return START
@@ -96,12 +58,11 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         )
         return PREMIUM
     elif choice == "Знайомства":
-        user = update.message.from_user
         await update.message.reply_text(
-            "Введіть своє ім'я або оберіть запропоноване:",
+            "Введіть ваше ім'я:",
             reply_markup=ReplyKeyboardMarkup(
                 [
-                    [KeyboardButton(user.first_name)],
+                    [KeyboardButton(update.message.from_user.first_name)],
                     [KeyboardButton("Ввести інше ім'я")]
                 ], 
                 resize_keyboard=True, one_time_keyboard=True
@@ -158,7 +119,7 @@ async def subscription_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         return PREMIUM
     else:
         context.user_data['subscription'] = choice
-        user_country = update.message.from_user.language_code  # Приклад отримання коду країни
+        user_country = update.message.from_user.language_code
         currency = get_currency(user_country)
         await update.message.reply_text(
             get_subscription_benefits(choice, currency),
@@ -219,15 +180,9 @@ async def gift_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         return START
 
 async def set_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text == "Ввести інше ім'я":
-        await update.message.reply_text("Введіть своє ім'я:")
-        return NAME
-    else:
-        context.user_data['name'] = update.message.text
-        await update.message.reply_text(
-            "Введіть свій вік:"
-        )
-        return AGE
+    context.user_data['name'] = update.message.text
+    await update.message.reply_text("Введіть свій вік:")
+    return AGE
 
 async def set_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
@@ -274,18 +229,46 @@ async def set_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return CITY
     else:
         context.user_data['city'] = update.message.text
-        profile = context.user_data
         await update.message.reply_text(
-            f"Ваші дані:\nІм'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\n\nВсе вірно?",
+            "Виберіть свою стать:",
             reply_markup=ReplyKeyboardMarkup(
                 [
-                    [KeyboardButton("Так")],
-                    [KeyboardButton("Ні")]
+                    [KeyboardButton("Я хлопець 👦"), KeyboardButton("Я дівчина 👧")]
                 ], 
-                resize_keyboard=True
+                resize_keyboard=True, one_time_keyboard=True
             )
         )
-        return CONFIRMATION
+        return GENDER
+
+async def set_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['gender'] = update.message.text
+    await update.message.reply_text(
+        "Кого ви хочете шукати?",
+        reply_markup=ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Шукати хлопця 👦"), KeyboardButton("Шукати дівчину 👧")]
+            ], 
+            resize_keyboard=True, one_time_keyboard=True
+        )
+    )
+    return SEARCH
+
+async def process_search_preference(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    search_preference = update.message.text
+    context.user_data['search_preference'] = search_preference
+    profile = context.user_data
+
+    await update.message.reply_text(
+        f"Ваші дані:\nІм'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\nСтать: {profile['gender']}\nШукає: {search_preference.lower()}\n\nВсе вірно?",
+        reply_markup=ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Так")],
+                [KeyboardButton("Ні")]
+            ], 
+            resize_keyboard=True
+        )
+    )
+    return CONFIRMATION
 
 async def confirm_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text == "Так":
@@ -318,27 +301,6 @@ async def confirm_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         )
         return START
 
-async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text == "Ім'я":
-        user = update.message.from_user
-        await update.message.reply_text(
-            "Введіть своє нове ім'я або оберіть запропоноване:",
-            reply_markup=ReplyKeyboardMarkup(
-                [
-                    [KeyboardButton(user.first_name)],
-                    [KeyboardButton("Ввести інше ім'я")]
-                ], 
-                resize_keyboard=True, one_time_keyboard=True
-            )
-        )
-        return NAME
-    elif update.message.text == "Вік":
-        await update.message.reply_text("Введіть свій новий вік:")
-        return AGE
-    elif update.message.text == "Місто":
-        await update.message.reply_text("Введіть своє нове місто:")
-        return CITY
-
 async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     user_data = user_profiles.get(user_id)
@@ -349,8 +311,9 @@ async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     city = user_data.get('city')
     age = user_data.get('age')
+    search_preference = user_data.get('search_preference')
 
-    profiles = [profile for uid, profile in user_profiles.items() if uid != user_id and profile['city'] == city and age - 3 <= profile['age'] <= age + 3]
+    profiles = [profile for uid, profile in user_profiles.items() if uid != user_id and profile['city'] == city and age - 3 <= profile['age'] <= age + 3 and (search_preference == "Шукати всіх" or profile['gender'] == search_preference)]
 
     if profiles:
         random.shuffle(profiles)
@@ -397,8 +360,9 @@ async def process_search_profiles(update: Update, context: ContextTypes.DEFAULT_
     user_age = user_data.get('age')
     min_age = user_age - 3
     max_age = user_age + 3
+    search_preference = user_data.get('search_preference')
 
-    matching_profiles = [profile for uid, profile in user_profiles.items() if uid != user_id and profile['city'] == city and min_age <= profile['age'] <= max_age]
+    matching_profiles = search_profiles_by_criteria(user_profiles, city, min_age, max_age, search_preference)
 
     if matching_profiles:
         response = "Знайдені анкети:\n\n"
@@ -408,4 +372,8 @@ async def process_search_profiles(update: Update, context: ContextTypes.DEFAULT_
         response = "Не знайдено анкет, що відповідають вашим критеріям."
 
     await update.message.reply_text(response)
+    return ConversationHandler.END
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("Скасовано.")
     return ConversationHandler.END
