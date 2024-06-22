@@ -110,7 +110,6 @@ async def premium_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     [KeyboardButton("На тиждень")],
                     [KeyboardButton("На місяць")],
                     [KeyboardButton("На рік")],
-                    [KeyboardButton("Назавжди")],
                     [KeyboardButton("Назад")]
                 ], 
                 resize_keyboard=True
@@ -152,7 +151,6 @@ async def gift_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
                     [KeyboardButton("На тиждень")],
                     [KeyboardButton("На місяць")],
                     [KeyboardButton("На рік")],
-                    [KeyboardButton("Назавжди")],
                     [KeyboardButton("Назад")]
                 ], 
                 resize_keyboard=True
