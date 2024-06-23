@@ -11,7 +11,7 @@ from geopy.exc import GeocoderServiceError
 
 geolocator = Nominatim(user_agent="telegram_bot")
 
-START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY = range(14)
+START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE = range(16)
 
 user_profiles = {}
 current_profile_index = {}
@@ -30,15 +30,21 @@ async def send_welcome_premium_message(update: Update, duration: str) -> None:
         )
     )
     try:
-        await update.message.reply_sticker("CAACAgIAAxkBAAECu6JhFdXqlWXH35nWcF5J6J_fDk8k5gACbQEAAhZCawpA5Ghl9NDCry4E")
+        await update.message.reply_sticker("CAACAgUAAxkBAAIKkWZ13fvfJF-qwg3ix6yvNxd7WERpAAKmAwAC6QrIA3mzkAhrhbH0NQQ")
     except Exception as e:
         print(f"Failed to send sticker: {e}")
 
 async def send_gender_match_sticker(update: Update) -> None:
     try:
-        await update.message.reply_sticker("CAACAgIAAxkBAAEC7o1iFkQxIb5ZP2U3l5Yl_jeVhN-fhQACGgADx_rFIwNQ2dd0kQ8HLgQ")  # Замініть на правильний стікер
+        await update.message.reply_sticker("CAACAgIAAxkBAAIKk2Z13glz9gcAATCnSDS6Jpq-lM0BhAACiQIAAladvQqhVs0CITIOPTUE")  # Замініть на правильний стікер
     except Exception as e:
         print(f"Failed to send gender match sticker: {e}")
+
+async def send_special_gender_match_sticker(update: Update) -> None:
+    try:
+        await update.message.reply_sticker("CAACAgIAAxkBAAIKk2Z13glz9gcAATCnSDS6Jpq-lM0BhAACiQIAAladvQqhVs0CITIOPTUE")  # Замініть на правильний стікер
+    except Exception as e:
+        print(f"Failed to send special gender match sticker: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
@@ -98,6 +104,9 @@ async def enter_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         }
         del premium_keys[key]
         await send_welcome_premium_message(update, duration)
+        if duration == "На рік":
+            await update.message.reply_text("Введіть мінімальний вік для пошуку:")
+            return AGE_RANGE
     else:
         await update.message.reply_text("Унікальний ключ невірний. Спробуйте ще раз.")
     return START
@@ -172,6 +181,9 @@ async def gift_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             'duration': duration
         }
         await send_welcome_premium_message(update, duration)
+        if duration == "На рік":
+            await update.message.reply_text("Введіть мінімальний вік для пошуку:")
+            return AGE_RANGE
         return START
     elif choice == "Купити в подарунок":
         key = generate_unique_key()
@@ -187,6 +199,26 @@ async def gift_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
                 resize_keyboard=True
         ))
         return START
+
+async def set_age_range(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    try:
+        min_age = int(update.message.text)
+        context.user_data['min_age'] = min_age
+        await update.message.reply_text("Введіть максимальний вік для пошуку:")
+        return MAX_AGE
+    except ValueError:
+        await update.message.reply_text("Будь ласка, введіть вік цифрами:")
+        return AGE_RANGE
+
+async def set_max_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    try:
+        max_age = int(update.message.text)
+        context.user_data['max_age'] = max_age
+        await update.message.reply_text("Параметри пошуку збережено.")
+        return START
+    except ValueError:
+        await update.message.reply_text("Будь ласка, введіть вік цифрами:")
+        return MAX_AGE
 
 async def set_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['name'] = update.message.text
@@ -335,7 +367,14 @@ async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     age = user_data.get('age')
     search_preference = user_data.get('search_preference')
 
-    profiles = [profile for uid, profile in user_profiles.items() if uid != user_id and profile['city'] == city and age - 3 <= profile['age'] <= age + 3 and (search_preference == "Шукати всіх" or profile['gender'] == search_preference)]
+    if user_data.get('premium', {}).get('status', False) and user_data['premium'].get('duration') == "На рік":
+        min_age = user_data.get('min_age', age - 3)
+        max_age = user_data.get('max_age', age + 3)
+    else:
+        min_age = age - 3
+        max_age = age + 3
+
+    profiles = [profile for uid, profile in user_profiles.items() if uid != user_id and profile['city'] == city and min_age <= profile['age'] <= max_age and (search_preference == "Шукати всіх" or profile['gender'] == search_preference)]
 
     if profiles:
         random.shuffle(profiles)
@@ -356,8 +395,12 @@ async def show_next_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     profiles = current_profile_index[user_id]
     next_profile = profiles.pop()
 
-    if user_profiles[user_id].get('premium', {}).get('status', False) and user_profiles[user_id]['gender'] == next_profile['gender']:
-        await send_gender_match_sticker(update)
+    user_profile = user_profiles[user_id]
+    if user_profile.get('premium', {}).get('status', False):
+        if user_profile['gender'] == next_profile['gender']:
+            await send_special_gender_match_sticker(update)
+        else:
+            await send_gender_match_sticker(update)
 
     await update.message.reply_text(
         f"Ім'я: {next_profile['name']}\nВік: {next_profile['age']}\nМісто: {next_profile['city']}\n",

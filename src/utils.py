@@ -1,27 +1,27 @@
 import random
 import string
 
-def generate_unique_key(length=12):
+def generate_unique_key(length=10) -> str:
     characters = string.ascii_letters + string.digits
-    key = ''.join(random.choice(characters) for i in range(length))
-    return key
+    return ''.join(random.choice(characters) for i in range(length))
 
-def get_currency(country_code):
-    currency_dict = {
-        "US": "USD",
-        "UA": "UAH",
-        "EU": "EUR",
-        "GB": "GBP",
-    }
-    return currency_dict.get(country_code, "USD")
+def get_currency(user_country: str) -> str:
+    # Реалізуйте логіку визначення валюти на основі коду країни
+    return "грн"  # Приклад: повертає гривню
 
-def get_subscription_benefits(subscription_type, currency):
-    benefits = {
-        "На тиждень": f"Переваги підписки на тиждень:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n\nЦіна: 10 {currency}",
-        "На місяць": f"Переваги підписки на місяць:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n\nЦіна: 30 {currency}",
-        "На рік": f"Переваги підписки на рік:\n- Повний доступ до всіх функцій\n- Пріоритетна підтримка\n- Бонусні матеріали\n- Спеціальні пропозиції\n\nЦіна: 300 {currency}"
-    }
-    return benefits.get(subscription_type, "Невідомий тип підписки")
+def get_subscription_benefits(duration: str, currency: str) -> str:
+    if duration == "На тиждень":
+        return f"Вартість підписки на тиждень: 50 {currency}.\nПереваги: ... (список переваг)"
+    elif duration == "На місяць":
+        return f"Вартість підписки на місяць: 150 {currency}.\nПереваги: ... (список переваг)"
+    elif duration == "На рік":
+        return f"Вартість підписки на рік: 1200 {currency}.\nПереваги: ... (список переваг)\n\nДодаткова можливість: вибір діапазону віку для пошуку."
+    return ""
 
-def search_profiles_by_criteria(user_profiles, city, min_age, max_age, search_preference):
-    return [profile for uid, profile in user_profiles.items() if profile['city'] == city and min_age <= profile['age'] <= max_age and (search_preference == "Шукати всіх" or profile['gender'] == search_preference)]
+def search_profiles_by_criteria(user_profiles: dict, city: str, min_age: int, max_age: int, search_preference: str) -> list:
+    matching_profiles = []
+    for profile in user_profiles.values():
+        if profile['city'] == city and min_age <= profile['age'] <= max_age:
+            if search_preference == "Шукати всіх" or profile['gender'] == search_preference:
+                matching_profiles.append(profile)
+    return matching_profiles

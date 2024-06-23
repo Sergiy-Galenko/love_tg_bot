@@ -3,8 +3,8 @@ from src.handlers import (
     start, handle_choice, enter_key, premium_choice, subscription_choice, 
     gift_choice, set_name, set_age, set_city, get_location, set_gender, 
     process_search_preference, confirm_data, view_profiles, show_next_profile,
-    search_profiles, process_search_profiles, cancel,
-    START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY
+    search_profiles, process_search_profiles, cancel, set_age_range, set_max_age,
+    START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE
 )
 
 def main() -> None:
@@ -26,7 +26,9 @@ def main() -> None:
             SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_preference)],
             CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_data)],
             VIEW_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_profiles)],
-            SEARCH_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_profiles)]
+            SEARCH_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_profiles)],
+            AGE_RANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_age_range)],
+            MAX_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_max_age)]
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
