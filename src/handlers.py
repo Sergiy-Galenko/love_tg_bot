@@ -5,6 +5,11 @@ from src.utils import (
     search_profiles_by_criteria
 )
 import random
+import requests
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderServiceError
+
+geolocator = Nominatim(user_agent="telegram_bot")
 
 START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY = range(14)
 
@@ -25,13 +30,13 @@ async def send_welcome_premium_message(update: Update, duration: str) -> None:
         )
     )
     try:
-        await update.message.reply_sticker("CAACAgUAAxkBAAIKkWZ13fvfJF-qwg3ix6yvNxd7WERpAAKmAwAC6QrIA3mzkAhrhbH0NQQ")
+        await update.message.reply_sticker("CAACAgIAAxkBAAECu6JhFdXqlWXH35nWcF5J6J_fDk8k5gACbQEAAhZCawpA5Ghl9NDCry4E")
     except Exception as e:
         print(f"Failed to send sticker: {e}")
 
 async def send_gender_match_sticker(update: Update) -> None:
     try:
-        await update.message.reply_sticker("CAACAgIAAxkBAAIKk2Z13glz9gcAATCnSDS6Jpq-lM0BhAACiQIAAladvQqhVs0CITIOPTUE")  # Замініть на правильний стікер
+        await update.message.reply_sticker("CAACAgIAAxkBAAEC7o1iFkQxIb5ZP2U3l5Yl_jeVhN-fhQACGgADx_rFIwNQ2dd0kQ8HLgQ")  # Замініть на правильний стікер
     except Exception as e:
         print(f"Failed to send gender match sticker: {e}")
 
@@ -179,7 +184,7 @@ async def gift_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
                 [KeyboardButton("18+")],
                 [KeyboardButton("Ввести унікальний ключ")]
             ], 
-            resize_keyboard=True
+                resize_keyboard=True
         ))
         return START
 
@@ -209,15 +214,28 @@ async def set_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.location:
         location = update.message.location
-        user_location = geolocator.reverse(f"{location.latitude}, {location.longitude}")
-        city = user_location.raw['address'].get('city', user_location.raw['address'].get('town', ''))
+        try:
+            user_location = geolocator.reverse(f"{location.latitude}, {location.longitude}", timeout=10)
+            city = user_location.raw['address'].get('city', user_location.raw['address'].get('town', ''))
+        except GeocoderServiceError as e:
+            # Обхід проблеми з SSL-сертифікатом
+            response = requests.get(
+                f"https://nominatim.openstreetmap.org/reverse?lat={location.latitude}&lon={location.longitude}&format=json&addressdetails=1",
+                verify=False
+            )
+            if response.status_code == 200:
+                user_location = response.json()
+                city = user_location.get('address', {}).get('city', user_location.get('address', {}).get('town', ''))
+            else:
+                await update.message.reply_text("Не вдалося визначити ваше місцезнаходження. Введіть своє місто вручну:")
+                return CITY
         context.user_data['city'] = city
         await update.message.reply_text(
-            f"Ваше місто: {city}. Хочете залишити це місто або ввести інше?",
+            f"Ваше місто: {city}.",
             reply_markup=ReplyKeyboardMarkup(
                 [
-                    [KeyboardButton(city)],
-                    [KeyboardButton("Ввести інше місто")]
+                    [KeyboardButton(f"Залишити місто ({city})")],
+                    [KeyboardButton("Ввести вручну")]
                 ], 
                 resize_keyboard=True, one_time_keyboard=True
             )
@@ -228,7 +246,7 @@ async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return CITY
 
 async def set_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text == "Ввести інше місто":
+    if update.message.text == "Ввести вручну":
         await update.message.reply_text("Введіть своє місто:")
         return CITY
     else:

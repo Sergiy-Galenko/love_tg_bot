@@ -20,22 +20,19 @@ def main() -> None:
             GIFT: [MessageHandler(filters.TEXT & ~filters.COMMAND, gift_choice)],
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_name)],
             AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_age)],
+            LOCATION: [MessageHandler(filters.LOCATION, get_location), MessageHandler(filters.TEXT & ~filters.COMMAND, get_location)],
             CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_city)],
-            LOCATION: [MessageHandler(filters.LOCATION | filters.TEXT & ~filters.COMMAND, get_location)],
             GENDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_gender)],
             SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_preference)],
             CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_data)],
-            VIEW_PROFILES: [MessageHandler(filters.Regex('^Наступний$'), show_next_profile)],
-            SEARCH_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_profiles)],
+            VIEW_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_profiles)],
+            SEARCH_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_profiles)]
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
 
     application.add_handler(conv_handler)
-    application.add_handler(MessageHandler(filters.Regex('^Переглянути анкети$'), view_profiles))
-    application.add_handler(MessageHandler(filters.Regex('^Пошук$'), search_profiles))
-
-    application.run_polling(stop_signals=None)
+    application.run_polling()
 
 if __name__ == '__main__':
     main()
