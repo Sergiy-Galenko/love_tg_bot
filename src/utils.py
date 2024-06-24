@@ -15,7 +15,7 @@ def get_subscription_benefits(duration: str, currency: str) -> str:
     elif duration == "На місяць":
         return f"Вартість підписки на місяць: 150 {currency}.\nПереваги: ... (список переваг)"
     elif duration == "На рік":
-        return f"Вартість підписки на рік: 1200 {currency}.\nПереваги: ... (список переваг)\n\nДодаткова можливість: вибір діапазону віку для пошуку."
+        return f"Вартість підписки на рік: 1800 - ?% = 1200{currency}.\nПереваги: ... (список переваг)\n\nДодаткова можливість: вибір діапазону віку для пошуку (від 18 до 99)."
     return ""
 
 def search_profiles_by_criteria(user_profiles: dict, city: str, min_age: int, max_age: int, search_preference: str) -> list:
