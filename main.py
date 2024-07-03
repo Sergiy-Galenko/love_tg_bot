@@ -4,11 +4,11 @@ from src.handlers import (
     gift_choice, set_name, set_age, set_city, get_location, set_gender, 
     process_search_preference, confirm_data, view_profiles, show_next_profile,
     search_profiles, process_search_profiles, cancel, set_age_range, set_max_age,
-    START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE
+    START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE, ADULT_NAME, ADULT_AGE, ADULT_CITY, ADULT_LOCATION, ADULT_GENDER, ADULT_SEARCH, ADULT_CONFIRMATION, ADULT_VIEW_PROFILES
 )
 
 def main() -> None:
-    application = Application.builder().token("").build()  # Замініть на ваш правильний токен
+    application = Application.builder().token("7105850725:AAFItkfDHDVM4RNPEd0Hcgsts_3dMRiaJKo").build()  # Замініть на ваш правильний токен
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
@@ -25,10 +25,18 @@ def main() -> None:
             GENDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_gender)],
             SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_preference)],
             CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_data)],
-            VIEW_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_profiles)],
+            VIEW_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, show_next_profile)],
             SEARCH_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_profiles)],
             AGE_RANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_age_range)],
-            MAX_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_max_age)]
+            MAX_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_max_age)],
+            ADULT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_name)],
+            ADULT_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_age)],
+            ADULT_LOCATION: [MessageHandler(filters.LOCATION, get_location), MessageHandler(filters.TEXT & ~filters.COMMAND, get_location)],
+            ADULT_CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_city)],
+            ADULT_GENDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_gender)],
+            ADULT_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_preference)],
+            ADULT_CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_data)],
+            ADULT_VIEW_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, show_next_profile)]
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )

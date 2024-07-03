@@ -11,7 +11,7 @@ from geopy.exc import GeocoderServiceError
 
 geolocator = Nominatim(user_agent="telegram_bot")
 
-START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE = range(16)
+START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE, ADULT_NAME, ADULT_AGE, ADULT_CITY, ADULT_LOCATION, ADULT_GENDER, ADULT_SEARCH, ADULT_CONFIRMATION, ADULT_VIEW_PROFILES = range(24)
 
 user_profiles = {}
 current_profile_index = {}
@@ -62,18 +62,34 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     choice = update.message.text
+    user_id = update.message.from_user.id
+
     if choice == "18+":
-        await update.message.reply_text(
-            "Щоб отримати доступ до цього розділу, вам потрібно оформити преміум-акаунт.",
-            reply_markup=ReplyKeyboardMarkup(
-                [
-                    [KeyboardButton("🔴 Купити преміум")],
-                    [KeyboardButton("Назад")]
-                ], 
-                resize_keyboard=True
+        user_profile = user_profiles.get(user_id)
+        if user_profile and user_profile.get('premium', {}).get('status', False):
+            await update.message.reply_text(
+                "Введіть ваше ім'я для профілю 18+:",
+                reply_markup=ReplyKeyboardMarkup(
+                    [
+                        [KeyboardButton(update.message.from_user.first_name)],
+                        [KeyboardButton("Ввести інше ім'я")]
+                    ], 
+                    resize_keyboard=True, one_time_keyboard=True
+                )
             )
-        )
-        return PREMIUM
+            return ADULT_NAME
+        else:
+            await update.message.reply_text(
+                "Щоб отримати доступ до цього розділу, вам потрібно оформити преміум-акаунт.",
+                reply_markup=ReplyKeyboardMarkup(
+                    [
+                        [KeyboardButton("🔴 Купити преміум")],
+                        [KeyboardButton("Назад")]
+                    ], 
+                    resize_keyboard=True
+                )
+            )
+            return PREMIUM
     elif choice == "Знайомства":
         await update.message.reply_text(
             "Введіть ваше ім'я:",
@@ -366,6 +382,7 @@ async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     city = user_data.get('city')
     age = user_data.get('age')
     search_preference = user_data.get('search_preference')
+    is_adult = user_data.get('is_adult', False)
 
     if user_data.get('premium', {}).get('status', False) and user_data['premium'].get('duration') == "На рік":
         min_age = user_data.get('min_age', age - 3)
@@ -374,7 +391,7 @@ async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         min_age = age - 3
         max_age = age + 3
 
-    profiles = [profile for uid, profile in user_profiles.items() if uid != user_id and profile['city'] == city and min_age <= profile['age'] <= max_age and (search_preference == "Шукати всіх" or profile['gender'] == search_preference)]
+    profiles = [profile for uid, profile in user_profiles.items() if uid != user_id and profile['city'] == city and profile.get('is_adult', False) == is_adult and min_age <= profile['age'] <= max_age and (search_preference == "Шукати всіх" or profile['gender'] == search_preference)]
 
     if profiles:
         random.shuffle(profiles)
@@ -382,15 +399,14 @@ async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await show_next_profile(update, context)
     else:
         await update.message.reply_text("Немає анкет для перегляду.")
-        return ConversationHandler.END
-    return VIEW_PROFILES
+        return VIEW_PROFILES
 
 async def show_next_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
 
     if user_id not in current_profile_index or not current_profile_index[user_id]:
         await update.message.reply_text("Більше немає анкет для перегляду.")
-        return ConversationHandler.END
+        return VIEW_PROFILES
 
     profiles = current_profile_index[user_id]
     next_profile = profiles.pop()
@@ -430,8 +446,9 @@ async def process_search_profiles(update: Update, context: ContextTypes.DEFAULT_
     min_age = user_age - 3
     max_age = user_age + 3
     search_preference = user_data.get('search_preference')
+    is_adult = user_data.get('is_adult', False)
 
-    matching_profiles = search_profiles_by_criteria(user_profiles, city, min_age, max_age, search_preference)
+    matching_profiles = search_profiles_by_criteria(user_profiles, city, min_age, max_age, search_preference, is_adult)
 
     if matching_profiles:
         response = "Знайдені анкети:\n\n"
