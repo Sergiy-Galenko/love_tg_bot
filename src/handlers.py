@@ -1,9 +1,6 @@
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
-from src.utils import (
-    generate_unique_key, get_currency, get_subscription_benefits, 
-    search_profiles_by_criteria
-)
+from src.utils import generate_unique_key, get_currency, get_subscription_benefits, search_profiles_by_criteria
 import random
 import requests
 from geopy.geocoders import Nominatim
@@ -11,11 +8,14 @@ from geopy.exc import GeocoderServiceError
 
 geolocator = Nominatim(user_agent="telegram_bot")
 
-START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE, ADULT_NAME, ADULT_AGE, ADULT_CITY, ADULT_LOCATION, ADULT_GENDER, ADULT_SEARCH, ADULT_CONFIRMATION, ADULT_VIEW_PROFILES = range(24)
+START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE, ADULT_NAME, ADULT_AGE, ADULT_CITY, ADULT_LOCATION, ADULT_GENDER, ADULT_SEARCH, ADULT_CONFIRMATION, ADULT_VIEW_PROFILES, HOBBY = range(25)
 
 user_profiles = {}
 current_profile_index = {}
 premium_keys = {}
+
+PREMIUM_STICKER_ID = "CAACAgUAAxkBAAIKkWZ13fvfJF-qwg3ix6yvNxd7WERpAAKmAwAC6QrIA3mzkAhrhbH0NQQ"
+LOVE_STICKER_ID = "CAACAgIAAxkBAAIKk2Z13glz9gcAATCnSDS6Jpq-lM0BhAACiQIAAladvQqhVs0CITIOPTUE"
 
 async def send_welcome_premium_message(update: Update, duration: str) -> None:
     await update.message.reply_text(
@@ -30,21 +30,15 @@ async def send_welcome_premium_message(update: Update, duration: str) -> None:
         )
     )
     try:
-        await update.message.reply_sticker("CAACAgUAAxkBAAIKkWZ13fvfJF-qwg3ix6yvNxd7WERpAAKmAwAC6QrIA3mzkAhrhbH0NQQ")
+        await update.message.reply_sticker(PREMIUM_STICKER_ID)
     except Exception as e:
-        print(f"Failed to send sticker: {e}")
+        print(f"Failed to send premium sticker: {e}")
 
 async def send_gender_match_sticker(update: Update) -> None:
     try:
-        await update.message.reply_sticker("CAACAgIAAxkBAAIKk2Z13glz9gcAATCnSDS6Jpq-lM0BhAACiQIAAladvQqhVs0CITIOPTUE")  # Замініть на правильний стікер
+        await update.message.reply_sticker(LOVE_STICKER_ID)
     except Exception as e:
-        print(f"Failed to send gender match sticker: {e}")
-
-async def send_special_gender_match_sticker(update: Update) -> None:
-    try:
-        await update.message.reply_sticker("CAACAgIAAxkBAAIKk2Z13glz9gcAATCnSDS6Jpq-lM0BhAACiQIAAladvQqhVs0CITIOPTUE")  # Замініть на правильний стікер
-    except Exception as e:
-        print(f"Failed to send special gender match sticker: {e}")
+        print(f"Failed to send love sticker: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
@@ -313,6 +307,19 @@ async def set_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def set_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['gender'] = update.message.text
     await update.message.reply_text(
+        "Розкажіть про себе або вкажіть ваші хобі:",
+        reply_markup=ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Пропустити")]
+            ], 
+            resize_keyboard=True, one_time_keyboard=True
+        )
+    )
+    return HOBBY
+
+async def set_hobby(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['hobby'] = update.message.text
+    await update.message.reply_text(
         "Кого ви хочете шукати?",
         reply_markup=ReplyKeyboardMarkup(
             [
@@ -329,7 +336,7 @@ async def process_search_preference(update: Update, context: ContextTypes.DEFAUL
     profile = context.user_data
 
     await update.message.reply_text(
-        f"Ваші дані:\nІм'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\nСтать: {profile['gender']}\nШукає: {search_preference.lower()}\n\nВсе вірно?",
+        f"Ваші дані:\nІм'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\nСтать: {profile['gender']}\nХобі: {profile.get('hobby', 'Не вказано')}\nШукає: {search_preference.lower()}\n\nВсе вірно?",
         reply_markup=ReplyKeyboardMarkup(
             [
                 [KeyboardButton("Так")],
@@ -419,7 +426,7 @@ async def show_next_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await send_gender_match_sticker(update)
 
     await update.message.reply_text(
-        f"Ім'я: {next_profile['name']}\nВік: {next_profile['age']}\nМісто: {next_profile['city']}\n",
+        f"Ім'я: {next_profile['name']}\nВік: {next_profile['age']}\nМісто: {next_profile['city']}\nХобі: {next_profile.get('hobby', 'Не вказано')}\n",
         reply_markup=ReplyKeyboardMarkup(
             [
                 [KeyboardButton("Наступний")]
@@ -453,7 +460,7 @@ async def process_search_profiles(update: Update, context: ContextTypes.DEFAULT_
     if matching_profiles:
         response = "Знайдені анкети:\n\n"
         for profile in matching_profiles:
-            response += f"Ім'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\n\n"
+            response += f"Ім'я: {profile['name']}\nВік: {profile['age']}\nМісто: {profile['city']}\nХобі: {profile.get('hobby', 'Не вказано')}\n\n"
     else:
         response = "Не знайдено анкет, що відповідають вашим критеріям."
 

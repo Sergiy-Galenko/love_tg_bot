@@ -1,4 +1,6 @@
-aiofiles==23.2.1
+python-telegram-bot==20.0
+pymongo==4.3.3
+requests==2.27.1aiofiles==23.2.1
 aiogram==3.7.0
 aiohttp==3.9.5
 aiosignal==1.3.1
@@ -15,3 +17,4 @@ pydantic_core==2.18.3
 python-dotenv==1.0.1
 typing_extensions==4.12.0
 yarl==1.9.4
+geopy==2.2.0

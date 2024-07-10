@@ -3,12 +3,12 @@ from src.handlers import (
     start, handle_choice, enter_key, premium_choice, subscription_choice, 
     gift_choice, set_name, set_age, set_city, get_location, set_gender, 
     process_search_preference, confirm_data, view_profiles, show_next_profile,
-    search_profiles, process_search_profiles, cancel, set_age_range, set_max_age,
-    START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE, ADULT_NAME, ADULT_AGE, ADULT_CITY, ADULT_LOCATION, ADULT_GENDER, ADULT_SEARCH, ADULT_CONFIRMATION, ADULT_VIEW_PROFILES
+    search_profiles, process_search_profiles, cancel, set_age_range, set_max_age, set_hobby,
+    START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE, ADULT_NAME, ADULT_AGE, ADULT_CITY, ADULT_LOCATION, ADULT_GENDER, ADULT_SEARCH, ADULT_CONFIRMATION, ADULT_VIEW_PROFILES, HOBBY
 )
 
 def main() -> None:
-    application = Application.builder().token("7105850725:AAFItkfDHDVM4RNPEd0Hcgsts_3dMRiaJKoHaskell").build()  # Замініть на ваш правильний токен
+    application = Application.builder().token("7105850725:AAFItkfDHDVM4RNPEd0Hcgsts_3dMRiaJKo").build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
@@ -23,6 +23,7 @@ def main() -> None:
             LOCATION: [MessageHandler(filters.LOCATION, get_location), MessageHandler(filters.TEXT & ~filters.COMMAND, get_location)],
             CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_city)],
             GENDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_gender)],
+            HOBBY: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_hobby)],
             SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_search_preference)],
             CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_data)],
             VIEW_PROFILES: [MessageHandler(filters.TEXT & ~filters.COMMAND, show_next_profile)],
