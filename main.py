@@ -1,5 +1,3 @@
-# main.py
-
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
 from src.handlers import (
     start, handle_choice, enter_key, premium_choice, subscription_choice,
@@ -9,8 +7,8 @@ from src.handlers import (
     START, NAME, AGE, CITY, LOCATION, GENDER, SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES,
     PREMIUM, SUBSCRIPTION, GIFT, ENTER_KEY, AGE_RANGE, MAX_AGE, HOBBY, PHOTO
 )
-from src.handlers.authentication import premium_keys  # Для доступу до premium_keys
-from src.handlers.search import user_profiles  # Для доступу до user_profiles
+from src.handlers.authentication import premium_keys  
+from src.handlers.search import user_profiles  
 
 import os
 
@@ -19,7 +17,6 @@ async def cancel(update, context):
     return ConversationHandler.END
 
 def main() -> None:
-    # Отримуємо токен з змінних оточення
     token = ('7105850725:AAFItkfDHDVM4RNPEd0Hcgsts_3dMRiaJKo')
     if not token:
         print("Будь ласка, встановіть змінну оточення TELEGRAM_BOT_TOKEN з вашим токеном бота.")
