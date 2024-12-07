@@ -1,4 +1,4 @@
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes
 from .constants import SEARCH, CONFIRMATION, VIEW_PROFILES, SEARCH_PROFILES, START, MAIN_MENU_BUTTONS, AGE_RANGE, MAX_AGE
 from .utils import send_gender_match_sticker
@@ -7,6 +7,7 @@ import random
 
 user_profiles = {}
 current_profile_index = {}
+likes = {}  # Зберігаємо лайки
 
 async def process_search_preference(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     search_preference = update.message.text
@@ -77,7 +78,7 @@ async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         max_age = age + 3
 
     profiles = [
-        profile for uid, profile in user_profiles.items()
+        (uid, profile) for uid, profile in user_profiles.items()
         if uid != user_id and
         profile['city'].lower() == city.lower() and
         min_age <= profile['age'] <= max_age and
@@ -97,25 +98,53 @@ async def view_profiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 async def show_next_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
 
+    user_message = update.message.text.lower() if update.message.text else ""
+
+    # Якщо користувач натиснув Лайк/Дизлайк/Наступний після перегляду профілю
+    if user_id in current_profile_index and current_profile_index[user_id]:
+        if user_message in ["лайк", "дизлайк", "наступний"]:
+            profiles = current_profile_index[user_id]
+            current_profile = profiles[-1]  # Поточний профіль
+            target_user_id, target_profile = current_profile
+
+            if user_message == "лайк":
+                if user_id not in likes:
+                    likes[user_id] = set()
+                if target_user_id not in likes[user_id]:
+                    likes[user_id].add(target_user_id)
+                    # Повідомляємо того користувача, що його хтось лайкнув
+                    await context.bot.send_message(chat_id=target_user_id, text="Вас хтось вподобав! 🌹")
+                    # Перевіряємо взаємність
+                    if target_user_id in likes and user_id in likes[target_user_id]:
+                        # Матч!
+                        await update.message.reply_text("Це матч! Ви і користувач, якого ви лайкнули, вподобали один одного 💞")
+                        await context.bot.send_message(chat_id=target_user_id, text="Це матч! Ви і той, хто вас лайкнув, вподобали один одного 💞")
+
+            # Якщо натиснули "Наступний", переходимо до наступного профілю
+            if user_message == "наступний":
+                profiles.pop()
+
+    # Показуємо наступний профіль, якщо він є
     if user_id not in current_profile_index or not current_profile_index[user_id]:
         await update.message.reply_text("Більше немає анкет для перегляду.")
         return VIEW_PROFILES
 
     profiles = current_profile_index[user_id]
-    next_profile = profiles.pop()
+    next_profile = profiles[-1]  # Не видаляємо його, поки не натиснуть "Наступний"
+    _, profile_data = next_profile
 
     user_profile = user_profiles[user_id]
     if user_profile.get('premium', {}).get('status', False):
         await send_gender_match_sticker(update)
 
-    if next_profile.get('photo'):
-        with open(next_profile['photo'], 'rb') as photo:
+    if profile_data.get('photo'):
+        with open(profile_data['photo'], 'rb') as photo:
             await update.message.reply_photo(photo)
     await update.message.reply_text(
-        f"Ім'я: {next_profile['name']}\nВік: {next_profile['age']}\nМісто: {next_profile['city']}\nХобі: {next_profile.get('hobby', 'Не вказано')}\n",
+        f"Ім'я: {profile_data['name']}\nВік: {profile_data['age']}\nМісто: {profile_data['city']}\nХобі: {profile_data.get('hobby', 'Не вказано')}\n",
         reply_markup=ReplyKeyboardMarkup(
             [
-                ["Наступний"]
+                ["Лайк", "Дизлайк", "Наступний"]
             ],
             resize_keyboard=True
         )

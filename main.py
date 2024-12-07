@@ -9,7 +9,6 @@ from src.handlers import (
 )
 from src.handlers.authentication import premium_keys  
 from src.handlers.search import user_profiles  
-
 import os
 
 async def cancel(update, context):

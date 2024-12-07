@@ -1,7 +1,6 @@
-
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes
-from .constants import START, MAIN_MENU_BUTTONS,NAME, PREMIUM, AGE_RANGE, ENTER_KEY
+from .constants import START, MAIN_MENU_BUTTONS, NAME, PREMIUM, AGE_RANGE, ENTER_KEY
 from .premium import premium_choice
 from .utils import send_welcome_premium_message
 from src.utils import get_currency
@@ -35,7 +34,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     resize_keyboard=True, one_time_keyboard=True
                 )
             )
-            return START  # Змінити на відповідний стан для ADULT_NAME
+            return START
         else:
             await update.message.reply_text(
                 "Щоб отримати доступ до цього розділу, вам потрібно оформити преміум-акаунт.",

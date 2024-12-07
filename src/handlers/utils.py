@@ -1,5 +1,3 @@
-# src/handlers/utils.py
-
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderServiceError
@@ -30,11 +28,16 @@ async def send_gender_match_sticker(update: Update) -> None:
         print(f"Failed to send love sticker: {e}")
 
 async def get_city_from_location(location) -> str:
+    city = ''
     try:
         user_location = geolocator.reverse(f"{location.latitude}, {location.longitude}", timeout=10)
-        city = user_location.raw['address'].get('city', user_location.raw['address'].get('town', ''))
-    except GeocoderServiceError as e:
-        # Обхід проблеми з SSL-сертифікатом
+        if user_location and 'address' in user_location.raw:
+            city = user_location.raw['address'].get('city', user_location.raw['address'].get('town', ''))
+    except GeocoderServiceError:
+        pass
+
+    if not city:
+        # Спробуємо через HTTP-запит
         response = requests.get(
             f"https://nominatim.openstreetmap.org/reverse?lat={location.latitude}&lon={location.longitude}&format=json&addressdetails=1",
             verify=False
@@ -42,13 +45,11 @@ async def get_city_from_location(location) -> str:
         if response.status_code == 200:
             user_location = response.json()
             city = user_location.get('address', {}).get('city', user_location.get('address', {}).get('town', ''))
-        else:
-            city = ''
-    return city
 
-def save_photo(photo_file, user_id):
+    return city if city else None
+
+async def save_photo(photo_file, user_id):
     photo_path = f"user_photos/{user_id}.jpg"
-    # Створення директорії, якщо вона не існує
     os.makedirs(os.path.dirname(photo_path), exist_ok=True)
-    photo_file.download(photo_path)
+    await photo_file.download_to_drive(photo_path)
     return photo_path

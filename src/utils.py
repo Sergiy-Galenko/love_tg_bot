@@ -6,7 +6,6 @@ def generate_unique_key(length=10) -> str:
     return ''.join(random.choice(characters) for _ in range(length))
 
 def get_currency(country_code: str) -> str:
-    # Проста реалізація, можна розширити відповідно до потреб
     return "грн" if country_code == "uk" else "USD"
 
 def get_subscription_benefits(duration: str, currency: str) -> str:

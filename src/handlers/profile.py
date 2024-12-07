@@ -44,7 +44,7 @@ async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             )
             return CITY
         else:
-            await update.message.reply_text("Не вдалося визначити ваше місцезнаходження. Введіть своє місто вручну:")
+            await update.message.reply_text("Не вдалося визначити ваше місто. Введіть своє місто вручну:")
             return CITY
     else:
         await update.message.reply_text("Введіть своє місто:")
@@ -54,18 +54,20 @@ async def set_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text == "Ввести вручну":
         await update.message.reply_text("Введіть своє місто:")
         return CITY
+    elif update.message.text.startswith("Залишити місто ("):
+        pass
     else:
         context.user_data['city'] = update.message.text
-        await update.message.reply_text(
-            "Виберіть свою стать:",
-            reply_markup=ReplyKeyboardMarkup(
-                [
-                    ["Я хлопець 👦", "Я дівчина 👧"]
-                ],
-                resize_keyboard=True, one_time_keyboard=True
-            )
+    await update.message.reply_text(
+        "Виберіть свою стать:",
+        reply_markup=ReplyKeyboardMarkup(
+            [
+                ["Я хлопець 👦", "Я дівчина 👧"]
+            ],
+            resize_keyboard=True, one_time_keyboard=True
         )
-        return GENDER
+    )
+    return GENDER
 
 async def set_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['gender'] = update.message.text
@@ -83,7 +85,7 @@ async def set_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.photo:
         photo_file = await update.message.photo[-1].get_file()
-        photo_path = save_photo(photo_file, update.message.from_user.id)
+        photo_path = await save_photo(photo_file, update.message.from_user.id)  # await тут, оскільки тепер використовуємо async
         context.user_data['photo'] = photo_path
         await update.message.reply_text("Ваше фото збережено.")
     else:
@@ -97,7 +99,8 @@ async def set_hobby(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "Кого ви хочете шукати?",
         reply_markup=ReplyKeyboardMarkup(
             [
-                ["Шукати хлопця 👦", "Шукати дівчину 👧"]
+                ["Шукати хлопця 👦", "Шукати дівчину 👧"],
+                ["Шукати всіх"]
             ],
             resize_keyboard=True, one_time_keyboard=True
         )
