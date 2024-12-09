@@ -1,7 +1,6 @@
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes
 from .constants import PREMIUM, SUBSCRIPTION, GIFT, START, MAIN_MENU_BUTTONS, AGE_RANGE
-from .utils import send_welcome_premium_message
 from src.utils import generate_unique_key, get_currency, get_subscription_benefits
 
 premium_keys = {}
@@ -60,7 +59,6 @@ async def gift_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         await subscription_choice(update, context)
         return SUBSCRIPTION
     elif choice == "Купити для себе":
-        user_id = update.message.from_user.id
         duration = context.user_data['subscription']
         if 'profile' not in context.user_data:
             context.user_data['profile'] = {}
@@ -68,7 +66,7 @@ async def gift_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             'status': True,
             'duration': duration
         }
-        await send_welcome_premium_message(update, duration)
+        await update.message.reply_text(f"Преміум на {duration} активовано!")
         if duration == "На рік":
             await update.message.reply_text("Введіть мінімальний вік для пошуку:")
             return AGE_RANGE

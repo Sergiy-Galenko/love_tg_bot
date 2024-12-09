@@ -1,5 +1,6 @@
 import random
 import string
+from sqlalchemy.ext.asyncio import AsyncSession
 
 def generate_unique_key(length=10) -> str:
     characters = string.ascii_letters + string.digits
@@ -16,11 +17,23 @@ def get_subscription_benefits(duration: str, currency: str) -> str:
     }
     return benefits.get(duration, "Невідомий тип підписки")
 
-def search_profiles_by_criteria(user_profiles, city, min_age, max_age, search_preference, is_adult):
-    return [
-        profile for uid, profile in user_profiles.items()
-        if profile['city'].lower() == city.lower() and
-        min_age <= profile['age'] <= max_age and
-        (search_preference == "Шукати всіх" or profile['gender'] == search_preference) and
-        profile.get('is_adult', False) == is_adult
-    ]
+async def search_profiles_by_criteria(session: AsyncSession, city: str, min_age: int, max_age: int, search_preference: str, is_adult: bool, current_user_id: int):
+    q = await session.execute(
+        """SELECT user_id FROM user_profiles
+           WHERE user_id != :uid
+             AND LOWER(city) = :city
+             AND age BETWEEN :min_age AND :max_age
+             AND (:pref = 'шукати всіх' OR LOWER(gender) = :pref)
+             AND is_adult = :is_adult
+        """,
+        {
+            "uid": current_user_id,
+            "city": city.lower(),
+            "min_age": min_age,
+            "max_age": max_age,
+            "pref": search_preference.lower(),
+            "is_adult": is_adult
+        }
+    )
+    results = q.fetchall()
+    return [r[0] for r in results]

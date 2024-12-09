@@ -15,7 +15,7 @@ async def set_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("Будь ласка, введіть вік цифрами:")
         return AGE
     await update.message.reply_text(
-        "Будь ласка, поділіться вашим місцезнаходженням або введіть місто вручну.",
+        "Поділіться місцезнаходженням або введіть місто вручну.",
         reply_markup=ReplyKeyboardMarkup(
             [
                 [KeyboardButton("Поділитися місцезнаходженням", request_location=True)],
@@ -44,7 +44,7 @@ async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             )
             return CITY
         else:
-            await update.message.reply_text("Не вдалося визначити ваше місто. Введіть своє місто вручну:")
+            await update.message.reply_text("Не вдалося визначити місто. Введіть своє місто:")
             return CITY
     else:
         await update.message.reply_text("Введіть своє місто:")
@@ -59,7 +59,7 @@ async def set_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     else:
         context.user_data['city'] = update.message.text
     await update.message.reply_text(
-        "Виберіть свою стать:",
+        "Виберіть стать:",
         reply_markup=ReplyKeyboardMarkup(
             [
                 ["Я хлопець 👦", "Я дівчина 👧"]
@@ -85,22 +85,21 @@ async def set_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.photo:
         photo_file = await update.message.photo[-1].get_file()
-        photo_path = await save_photo(photo_file, update.message.from_user.id)  # await тут, оскільки тепер використовуємо async
+        photo_path = await save_photo(photo_file, update.message.from_user.id)
         context.user_data['photo'] = photo_path
         await update.message.reply_text("Ваше фото збережено.")
     else:
         context.user_data['photo'] = None
-    await update.message.reply_text("Розкажіть про себе або вкажіть ваші хобі:")
+    await update.message.reply_text("Розкажіть про себе або ваші хобі:")
     return HOBBY
 
 async def set_hobby(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['hobby'] = update.message.text
     await update.message.reply_text(
-        "Кого ви хочете шукати?",
+        "Кого ви шукаєте?",
         reply_markup=ReplyKeyboardMarkup(
             [
-                ["Шукати хлопця 👦", "Шукати дівчину 👧"],
-                ["Шукати всіх"]
+                ["Шукати хлопця 👦", "Шукати дівчину 👧", "Шукати всіх"]
             ],
             resize_keyboard=True, one_time_keyboard=True
         )
